@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: VidFlow-backend
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8081
+      - DOWNLOAD_DIR=/app/downloads
+      - STATE_DIR=/app/downloads/.VidFlow
+      - TEMP_DIR=/app/downloads
+    volumes:
+      - ./downloads:/app/downloads
+      - ./src:/app/src
+    networks:
+      - VidFlow-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: VidFlow-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8081
+    depends_on:
+      - backend
+    networks:
+      - VidFlow-network
+    restart: unless-stopped
+
+networks:
+  VidFlow-network:
+    driver: bridge
+
+volumes:
+  downloads:
+    driver: local

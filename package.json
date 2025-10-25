@@ -1,0 +1,40 @@
+{
+  "name": "vidflow-nodejs",
+  "version": "1.0.0",
+  "description": "Modern video downloader powered by yt-dlp - Node.js backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node test-server.js",
+    "build:ui": "cd ui && npm install && npm run build",
+    "local": "start-local.bat",
+    "docker:build": "docker build -f Dockerfile.nodejs -t vidflow-nodejs .",
+    "docker:run": "docker-compose -f docker-compose.nodejs.yml up -d",
+    "docker:stop": "docker-compose -f docker-compose.nodejs.yml down"
+  },
+  "keywords": [
+    "youtube-dl",
+    "yt-dlp",
+    "downloader",
+    "video"
+  ],
+  "author": "",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "chokidar": "^3.5.3",
+    "lowdb": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

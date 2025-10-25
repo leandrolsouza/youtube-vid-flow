@@ -1,0 +1,27 @@
+FROM node:18-alpine
+
+# Instalar yt-dlp e ffmpeg
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    ffmpeg \
+    && pip3 install --break-system-packages yt-dlp
+
+WORKDIR /app
+
+# Copiar package.json e instalar dependências
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copiar código fonte
+COPY src/ ./src/
+COPY .env.example ./.env
+
+# Criar diretórios necessários
+RUN mkdir -p downloads downloads/.VidFlow
+
+# Expor porta
+EXPOSE 8081
+
+# Comando para iniciar o servidor
+CMD ["npm", "start"]
