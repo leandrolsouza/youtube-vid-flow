@@ -18,7 +18,7 @@ export function CompletedTable({ downloads, onUpdate }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ where: 'done', ids: [url] }),
       });
-      
+
       if (response.ok) {
         showToast('Download removed successfully', 'success');
         onUpdate?.();
@@ -39,7 +39,7 @@ export function CompletedTable({ downloads, onUpdate }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ where: 'done', ids: allIds }),
         });
-        
+
         if (response.ok) {
           showToast(`Cleared ${allIds.length} downloads`, 'success');
           onUpdate?.();
@@ -168,22 +168,10 @@ export function CompletedTable({ downloads, onUpdate }: Props) {
                 {download.entry?.filename && (
                   <button
                     onClick={() => {
-                      const formatFilename = (filename: string) => {
-                        return filename
-                          .replace(/\[.*?\]/g, '')
-                          .replace(/\.webm$/, '.mp4')
-                          .toLowerCase()
-                          .replace(/[^a-z0-9\s.-]/g, '')
-                          .replace(/\s+/g, '-')
-                          .replace(/-+/g, '-')
-                          .replace(/^-|-$/g, '')
-                          .replace(/-+\./g, '.');
-                      };
-
                       fetch('/api/open-folder', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ filename: formatFilename(download.entry!.filename) })
+                        body: JSON.stringify({ filename: download.entry!.filename })
                       }).then(response => {
                         if (response.ok) {
                           showToast('Folder opened', 'success');

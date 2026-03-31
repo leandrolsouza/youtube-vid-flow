@@ -3,6 +3,7 @@ import { join, relative, basename } from 'path';
 import { getFormat, getOpts } from './formats.js';
 import { logger } from '../logger.js';
 import { spawnYtdlp } from '../utils/ytdlp.js';
+import { config } from '../config.js';
 
 export class Download {
   constructor(downloadDir, tempDir, outputTemplate, outputTemplateChapter, quality, format, ytdlOpts, info) {
@@ -23,7 +24,7 @@ export class Download {
     logger.info(`Preparing download for: ${this.info.title}`);
     this.notifier = notifier;
     this.info.status = 'preparing';
-    
+
     try {
       await this.notifier.updated(this.info);
     } catch (e) {
@@ -41,12 +42,13 @@ export class Download {
         '-f', this.format,
         '--socket-timeout', '30',
         '--ignore-no-formats-error',
+        ...this.buildCookieArgs(),
         ...this.buildYtdlArgs(),
         this.info.url
       ];
 
       this.proc = spawnYtdlp(args);
-      
+
       this.proc.stdout.on('data', (data) => {
         try {
           const output = data.toString();
@@ -73,22 +75,32 @@ export class Download {
         if (code !== 0 && !this.canceled) {
           this.info.msg = `Process exited with code ${code}`;
         }
-        
+
         // Se o download foi bem-sucedido, tenta capturar o nome final do arquivo
         if (code === 0 && !this.canceled) {
           this.captureActualFilename();
         }
-        
+
         resolve();
       });
     });
+  }
+
+  buildCookieArgs() {
+    const args = [];
+    if (config.COOKIES_FROM_BROWSER) {
+      args.push('--cookies-from-browser', config.COOKIES_FROM_BROWSER);
+    } else if (config.COOKIES_FILE && existsSync(config.COOKIES_FILE)) {
+      args.push('--cookies', config.COOKIES_FILE);
+    }
+    return args;
   }
 
   buildYtdlArgs() {
     const args = [];
     for (const [key, value] of Object.entries(this.ytdlOpts)) {
       if (key === 'postprocessors' || value === null || value === undefined) continue;
-      
+
       const flag = `--${key.replace(/_/g, '-')}`;
       if (typeof value === 'boolean') {
         if (value) args.push(flag);
@@ -101,7 +113,7 @@ export class Download {
 
   parseProgress(output) {
     const lines = output.split('\n');
-    
+
     for (const line of lines) {
       this.parseDownloadProgress(line);
       this.parseDestination(line);
@@ -112,7 +124,7 @@ export class Download {
 
   parseDownloadProgress(line) {
     if (!line.includes('[download]')) return;
-    
+
     logger.info(`Progress line: ${line}`);
 
     // Match various percentage formats: 50.1%, 100%
@@ -142,7 +154,7 @@ export class Download {
       this.info.eta = minutes * 60 + seconds;
       logger.info(`Parsed ETA: ${this.info.eta} seconds`);
     }
-    
+
     if (percentMatch || speedMatch || etaMatch) {
       this.info.status = 'downloading';
       try {
@@ -200,7 +212,7 @@ export class Download {
 
   close() {
     logger.info(`Closing download process for: ${this.info.title}`);
-    
+
     if (this.proc && !this.proc.killed) {
       try {
         this.proc.kill();
@@ -208,7 +220,7 @@ export class Download {
         logger.error(`Failed to kill process: ${e.message}`);
       }
     }
-    
+
     if (this.tmpfilename && existsSync(this.tmpfilename)) {
       try {
         unlinkSync(this.tmpfilename);
@@ -243,6 +255,7 @@ export class Download {
         '--print', 'filename',
         '-o', this.outputTemplate,
         '-P', this.downloadDir,
+        ...this.buildCookieArgs(),
         this.info.url
       ];
 

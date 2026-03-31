@@ -14,6 +14,7 @@ export interface Download {
   filename?: string;
   size?: number;
   error?: string;
+  timestamp?: number;
   entry?: {
     filename: string;
     originalTitle?: string;

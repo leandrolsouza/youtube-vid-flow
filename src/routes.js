@@ -84,13 +84,13 @@ export function createRoutes(dqueue, io) {
 
   router.post(`${config.URL_PREFIX}start`, csrfCheck, async (req, res) => {
     const { ids } = req.body;
-    
+
     if (!ids || !Array.isArray(ids)) {
       return res.status(400).json({ status: 'error', msg: 'Invalid ids' });
     }
-    
+
     logger.info(`Received request to start pending downloads for ids: ${ids}`);
-    
+
     try {
       const status = await dqueue.startPending(ids);
       res.json(status);
@@ -134,18 +134,47 @@ export function createRoutes(dqueue, io) {
     try {
       const { exec } = await import('child_process');
       const { resolve } = await import('path');
-      const formattedFilename = formatFilename(filename);
-      const filePath = resolve(config.DOWNLOAD_DIR, formattedFilename);
-      
-      if (!existsSync(filePath)) {
-        return res.status(404).json({ status: 'error', msg: 'File not found' });
+
+      // Try multiple strategies to find the file
+      const candidates = [
+        resolve(config.DOWNLOAD_DIR, filename),
+        resolve(config.DOWNLOAD_DIR, formatFilename(filename)),
+      ];
+
+      // Also search the download directory for a partial match
+      const files = readdirSync(config.DOWNLOAD_DIR);
+      const normalizedSearch = formatFilename(filename);
+      const partialMatch = files.find(f => {
+        const normalizedFile = formatFilename(f);
+        return normalizedFile === normalizedSearch || f === filename;
+      });
+      if (partialMatch) {
+        candidates.unshift(resolve(config.DOWNLOAD_DIR, partialMatch));
+      }
+
+      const filePath = candidates.find(p => existsSync(p));
+
+      if (!filePath) {
+        // If no file found, just open the download directory
+        logger.warn(`File not found for "${filename}", opening download directory instead`);
+        const dirPath = resolve(config.DOWNLOAD_DIR);
+        const command = process.platform === 'win32'
+          ? `explorer "${dirPath}"`
+          : process.platform === 'darwin'
+            ? `open "${dirPath}"`
+            : `xdg-open "${dirPath}"`;
+
+        exec(command, (error) => {
+          if (error) logger.error(`Failed to open folder: ${error.message}`);
+        });
+        return res.json({ status: 'ok' });
       }
 
       const command = process.platform === 'win32'
         ? `explorer /select,"${filePath}"`
         : process.platform === 'darwin'
-        ? `open -R "${filePath}"`
-        : `xdg-open "${config.DOWNLOAD_DIR}"`;
+          ? `open -R "${filePath}"`
+          : `xdg-open "${config.DOWNLOAD_DIR}"`;
 
       exec(command, (error) => {
         if (error) {
